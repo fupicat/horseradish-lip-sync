@@ -242,7 +242,7 @@ def alignment_to_lip_shapes(alignment: dict, extended_shapes = "GHX") -> list[tu
     phoneme = entry[2]
 
     # Insert rests where no phoneme is being said
-    if start_time - last_phoneme_end_timestamp > 0.3:
+    if start_time - last_phoneme_end_timestamp > 0.2:
       lip_timeline.append((last_phoneme_end_timestamp, "X" if "X" in extended_shapes else "A"))
 
     shape = shape_map.get(phoneme, "B")  # Default to "B" if phoneme not found.
@@ -260,7 +260,7 @@ def alignment_to_lip_shapes(alignment: dict, extended_shapes = "GHX") -> list[tu
     last_shape = shape
     i += 1
   
-  lip_timeline.append((last_phoneme_end_timestamp + 0.2, "X" if "X" in extended_shapes else "A"))
+  lip_timeline.append((last_phoneme_end_timestamp, "X" if "X" in extended_shapes else "A"))
 
   return lip_timeline
 
@@ -323,14 +323,6 @@ def reframe_lip_shapes(lip_timings: list[tuple[float, str]], framerate: float, e
     for removable in remove_these:
       output_list.remove(removable)
   # Se estiver animando on twos ou mais, o algoritmo de reframe já adianta as keyframes, não precisa de passos adicionais.
-    
-
-  # Corrige o primeiro frame
-  if output_list[0][0] < 1:
-    if output_list[1][0] == 1:
-      output_list.pop(0)
-    else:
-      output_list[0] = (1, 0.0, output_list[0][2])
 
   return output_list
 
