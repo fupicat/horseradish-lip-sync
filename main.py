@@ -363,8 +363,12 @@ def add_transition_frames(lip_frames: list[tuple[int, float, str]], framerate: f
       if current_lip == "A":
         output_list.append(current_entry)
       else:
-        output_list.append((current_frame, current_time, current_lip + "-trans"))
-        output_list.append((current_frame + 1, current_time + secs_per_frame, current_lip))
+        # Não se faz transição de entrada se o primeiro frame for um X (rest), porque assume-se que a boca já está fechada.
+        if i == 0 and current_lip == "X":
+          output_list.append(current_entry)
+        else:
+          output_list.append((current_frame, current_time, current_lip + "-trans"))
+          output_list.append((current_frame + 1, current_time + secs_per_frame, current_lip))
       if not (current_lip == "X" and next_lip == "A"):
         output_list.append((next_frame - 1, next_time - secs_per_frame, current_lip + "-trans"))
       
