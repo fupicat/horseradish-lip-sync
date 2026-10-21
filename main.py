@@ -34,8 +34,8 @@ PHONEMES = {
   "A": "b bʲ m m̩ mʲ p pʰ pʲ pʷ",
   # qlq fonema não reconhecido é classificado como B, então n precisa colocar uma lista extensa aqui
   "B": "c cʰ cʷ ç d d̪ dʒ dʲ k n s t tʰ tʲ tʷ t̪ tʃ x z ɟ ɟʷ ɡ ɡʷ ɲ ŋ ɾ ʃ ʒ i ĩ ɨ j j̃ ð ɫ ʎ θ",
-  "C": "e ẽ ej eː ɛ ɛː ɪ ɚ ə əw",
-  "D": "ɑ ɑː a ɐ ɐ̃ aj aw aː æ ɜ ɜː ɝ",
+  "C": "e ẽ ej eː ɛ ɛː ɪ ɝ ɚ ə əw",
+  "D": "ɑ ɑː a ɐ ɐ̃ aj aw aː æ ɜ ɜː",
   "E": "o õ ow oː ɔ ɔj ɒ ɒː",
   "F": "u ũ uː ʉ ʉː w w̃ ʊ ʋ ɹ",
   "G": "f v vʲ fʲ",
