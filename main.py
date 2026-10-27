@@ -20,14 +20,13 @@ from tempfile import TemporaryDirectory
 from json import load as json_load, dumps as json_dumps
 from argparse import ArgumentParser
 from pathlib import Path
-from faster_whisper import WhisperModel, decode_audio
 from traceback import format_exc
+from typing import TYPE_CHECKING
 
-from montreal_forced_aligner.alignment import PretrainedAligner
-from montreal_forced_aligner.models import AcousticModel, DictionaryModel, G2PModel, ModelManager
-from montreal_forced_aligner.g2p.generator import PyniniDictionaryCorpusGenerator
-from montreal_forced_aligner.dictionary.multispeaker import MultispeakerDictionary
-from montreal_forced_aligner.exceptions import PhoneMismatchError
+if TYPE_CHECKING:
+  from faster_whisper import WhisperModel
+
+VERSION = "v0.0.4"
 
 # Fonemas que representam cada formato de boca
 PHONEMES = {
@@ -116,15 +115,19 @@ MFA_MODELS = {
 }
 
 
-def load_whisper(model_size = "turbo") -> WhisperModel:
+def load_whisper(model_size = "turbo") -> "WhisperModel":
+  from faster_whisper import WhisperModel
+
   return WhisperModel(model_size, device="auto")
 
-def detect_language(model: WhisperModel, audio_path: Path) -> str:
+def detect_language(model: "WhisperModel", audio_path: Path) -> str:
+  from faster_whisper import decode_audio
+
   audio = decode_audio(str(audio_path.resolve()))
   language, _, _ = model.detect_language(audio) # type: ignore
   return language
 
-def transcribe(model: WhisperModel, audio_path: Path, language: str) -> str:
+def transcribe(model: "WhisperModel", audio_path: Path, language: str) -> str:
   segments, _ = model.transcribe(str(audio_path.resolve()), language)
 
   transcription = ""
@@ -136,6 +139,8 @@ def transcribe(model: WhisperModel, audio_path: Path, language: str) -> str:
 
 
 def get_mfa_model_paths(language: str) -> tuple[Path, Path, Path | None]:
+  from montreal_forced_aligner.models import AcousticModel, DictionaryModel, G2PModel, ModelManager
+
   model_manager = ModelManager()
   
   # Acquire models
@@ -172,6 +177,11 @@ def get_mfa_model_paths(language: str) -> tuple[Path, Path, Path | None]:
   return (acoustic_path, dictionary_path, g2p_path)
 
 def generate_pronunciations(corpus_dir: str, output_dir: str, dictionary_path: Path, g2p_path: Path):
+  from montreal_forced_aligner.models import DictionaryModel, G2PModel
+  from montreal_forced_aligner.g2p.generator import PyniniDictionaryCorpusGenerator
+  from montreal_forced_aligner.dictionary.multispeaker import MultispeakerDictionary
+  from montreal_forced_aligner.exceptions import PhoneMismatchError
+
   with open(os.devnull, 'w') as devnull_var, redirect_stdout(devnull_var), redirect_stderr(devnull_var):
     dictionary_model = DictionaryModel(dictionary_path)
     g2p_model = G2PModel(g2p_path)
@@ -206,6 +216,8 @@ def generate_pronunciations(corpus_dir: str, output_dir: str, dictionary_path: P
     g2p.cleanup_connections()
 
 def align(corpus_dir: str, output_dir: str, acoustic_path: Path, dictionary_path: Path) -> dict:
+  from montreal_forced_aligner.alignment import PretrainedAligner
+
   with open(os.devnull, 'w') as devnull_var, redirect_stdout(devnull_var), redirect_stderr(devnull_var):
     aligner = PretrainedAligner(
       corpus_directory=corpus_dir,
@@ -377,8 +389,8 @@ def add_transition_frames(lip_frames: list[tuple[int, float, str]], framerate: f
 
 def main():
   parser = ArgumentParser(description="Horseradish Lip Sync allows you to quickly create 2D mouth animation from voice recordings. It analyzes your audio files, recognizes what is being said, then automatically generates lip sync information. You can use it for animating speech in computer games, animated cartoons, or any similar project.")
-  parser.add_argument("inputFile", type=str, help="The audio file to be analyzed. This must be the last command-line argument. Supported file formats are WAVE (.wav) and Ogg Vorbis (.ogg).")
-  parser.add_argument("-r", "--recognizer", type=str, default="mfa", help="LEGACY. DOES NOTHING. Specifies how Horseradish Lip Sync recognizes speech within the recording.")
+  parser.add_argument("inputFile", type=str, nargs="?", default="", help="The audio file to be analyzed. This must be the last command-line argument. Supported file formats are WAVE (.wav) and Ogg Vorbis (.ogg).")
+  parser.add_argument("-r", "--recognizer", type=str, default="mfa", help="Specifies how Horseradish Lip Sync recognizes speech within the recording. Right now, it does nothing. Preserved for compatibility with Rhubarb Lip Sync. The only valid option is \"mfa\" (Montreal Forced Aligner).")
   parser.add_argument("-f", "--exportFormat", type=str, default="tsv", help="The export format. Options: tsv (tab-separated values, see details), xml (see details), json (see details), dat (see Moho and OpenToonz).")
   parser.add_argument("-d", "--dialogFile", type=str, help="With this option, you can provide Horseradish Lip Sync with the dialog text to get more reliable results. Specify the path to a plain-text file (in ASCII or UTF-8 format) containing the dialog contained in the audio file. Horseradish Lip Sync will still perform word recognition internally, but it will prefer words and phrases that occur in the dialog file. This leads to better recognition results and thus more reliable animation.")
   parser.add_argument("--extendedShapes", type=str, default="GHX", help='As described in Mouth shapes, Horseradish Lip Sync uses six basic mouth shapes and up to three extended mouth shapes, which are optional. Use this option to specify which extended mouth shapes should be used. For example, to use only the G and X extended mouth shapes, specify GX; to use only the six basic mouth shapes, specify an empty string: "".')
@@ -393,6 +405,14 @@ def main():
   parser.add_argument("--machineReadable", action='store_true', help="This option is useful if you want to integrate Rhubarb Lip Sync with another (possibly graphical) application. All status messages to stderr will be in structured JSON format, allowing your program to parse them and display a graphical progress bar or something similar.")
 
   args = parser.parse_args()
+
+  if args.version:
+    print("Horseradish Lip Sync version " + VERSION)
+    sys.exit(0)
+
+  if not args.inputFile:
+    print("Error: No input file specified. Use the --help option for usage information.", file=sys.stderr)
+    sys.exit(1)
 
   machine_readable = args.machineReadable
 
