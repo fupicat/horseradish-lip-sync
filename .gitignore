@@ -1,3 +1,4 @@
 dist
 build
 sqlite3.exe
+__pycache__

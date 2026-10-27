@@ -21,7 +21,7 @@ from json import load as json_load, dumps as json_dumps
 from argparse import ArgumentParser
 from pathlib import Path
 from traceback import format_exc
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Callable
 
 if TYPE_CHECKING:
   from faster_whisper import WhisperModel
@@ -129,15 +129,37 @@ def detect_language(model: "WhisperModel", audio_path: Path) -> str:
   language, _, _ = model.detect_language(audio) # type: ignore
   return language
 
-def transcribe(model: "WhisperModel", audio_path: Path, language: str) -> str:
-  segments, _ = model.transcribe(str(audio_path.resolve()), language)
+def transcribe(
+  model: "WhisperModel",
+  audio_path: Path,
+  language: str,
+  progress_callback: Callable[[float], None] | None = None,
+) -> str:
+  segments, info = model.transcribe(str(audio_path.resolve()), language)
 
   transcription = ""
+  last_progress = 0.02
 
   for segment in segments:
     transcription += segment.text
+    if progress_callback and info.duration > 0:
+      progress = 0.02 + 0.38 * min(segment.end / info.duration, 1.0)
+      if progress > last_progress:
+        progress_callback(progress)
+        last_progress = progress
 
   return transcription.strip()
+
+
+def report_progress(value: float) -> None:
+  print(json_dumps({
+    "type": "progress",
+    "value": value,
+    "log": {
+      "level": "Trace",
+      "message": f"Progress: {value * 100:g}%",
+    },
+  }), file=sys.stderr)
 
 
 def get_mfa_model_paths(language: str) -> tuple[Path, Path, Path | None]:
@@ -435,7 +457,12 @@ def main():
     if args.dialogFile:
       input_text = open(Path(args.dialogFile), "r").read()
     else:
-      input_text = transcribe(model, audio_path, language)
+      input_text = transcribe(
+        model,
+        audio_path,
+        language,
+        progress_callback=report_progress if machine_readable else None,
+      )
     if machine_readable:
       print('{ "type": "progress", "value": 0.40, "log": { "level": "Trace", "message": "Progress: 40%" } }', file=sys.stderr)
 
