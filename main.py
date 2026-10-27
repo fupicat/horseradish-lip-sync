@@ -116,6 +116,8 @@ MFA_MODELS = {
 
 
 def load_whisper(model_size = "turbo") -> "WhisperModel":
+  # Corrige um erro que tenta carregar a biblioteca OMP duas vezes.
+  os.environ["MKL_THREADING_LAYER"] = "SEQUENTIAL"
   from faster_whisper import WhisperModel
 
   return WhisperModel(model_size, device="auto")
