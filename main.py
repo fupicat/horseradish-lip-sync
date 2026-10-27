@@ -422,11 +422,12 @@ def main():
   parser.add_argument("--version", action='store_true', help="Displays version information and exits.")
   parser.add_argument("--datFrameRate", type=int, help="LEGACY. USE --frameRate INSTEAD. Only valid when using the dat export format. Controls the frame rate for the output file.")
   parser.add_argument("--datUsePrestonBlair", action='store_true', help="Uses Preston Blair mouth shapes names instead of the default alphabetical ones.")
+  parser.add_argument("--machineReadable", action='store_true', help="This option is useful if you want to integrate Rhubarb Lip Sync with another (possibly graphical) application. All status messages to stderr will be in structured JSON format, allowing your program to parse them and display a graphical progress bar or something similar.")
+  parser.add_argument("-q", "--quiet", action='store_true', help="By default, Horseradish Lip Sync writes a number of progress messages to stderr. If you're using it as part of a batch process, this may clutter your console. If you specify the --quiet flag, there won't be any output to stderr unless an error occurred.")
   parser.add_argument("--outputAnalysis", type=str, help="Name of the file to save the MFA phoneme breakdown, for debug purposes.")
   parser.add_argument("--frameRate", type=int, default=24, help="Controls the frame rate for the output file.")
   parser.add_argument("--exposureDuration", type=int, default=2, help="Number of frames minimum for the keyframes to be exposed. 1 = Animation on ones, 2 = animation on twos, etc.")
   parser.add_argument("--useTransitionFrames", action='store_true', help="Adds transition frames between keyframes, labeled with '-trans' at the end. Note that transition frames ignore exposure, they are always animated on ones.")
-  parser.add_argument("--machineReadable", action='store_true', help="This option is useful if you want to integrate Rhubarb Lip Sync with another (possibly graphical) application. All status messages to stderr will be in structured JSON format, allowing your program to parse them and display a graphical progress bar or something similar.")
 
   args = parser.parse_args()
 
@@ -439,19 +440,20 @@ def main():
     sys.exit(1)
 
   machine_readable = args.machineReadable
+  quiet = args.quiet
 
-  if machine_readable:
+  if machine_readable and not quiet:
     print(f'{{ "type": "start", "file": {json_dumps(args.inputFile)}, "log": {{ "level": "Info", "message": "Application startup. Input file: {json_dumps(args.inputFile).replace('"', '\\"')}." }} }}', file=sys.stderr)
 
   try:
     audio_path = Path(args.inputFile)
     input_text = ""
-    if machine_readable:
+    if machine_readable and not quiet:
       print('{ "type": "progress", "value": 0.00, "log": { "level": "Trace", "message": "Progress: 0%" } }', file=sys.stderr)
     
     model = load_whisper()
     language = detect_language(model, audio_path)
-    if machine_readable:
+    if machine_readable and not quiet:
       print('{ "type": "progress", "value": 0.02, "log": { "level": "Trace", "message": "Progress: 2%" } }', file=sys.stderr)
     
     if args.dialogFile:
@@ -461,9 +463,9 @@ def main():
         model,
         audio_path,
         language,
-        progress_callback=report_progress if machine_readable else None,
+        progress_callback=report_progress if machine_readable and not quiet else None,
       )
-    if machine_readable:
+    if machine_readable and not quiet:
       print('{ "type": "progress", "value": 0.40, "log": { "level": "Trace", "message": "Progress: 40%" } }', file=sys.stderr)
 
     acoustic_path, dictionary_path, g2p_path = get_mfa_model_paths(language)
@@ -473,11 +475,11 @@ def main():
 
       if g2p_path:
         generate_pronunciations(corpus_dir, output_dir, dictionary_path, g2p_path)
-      if machine_readable:
+      if machine_readable and not quiet:
         print('{ "type": "progress", "value": 0.70, "log": { "level": "Trace", "message": "Progress: 70%" } }', file=sys.stderr)
 
       alignment = align(corpus_dir, output_dir, acoustic_path, dictionary_path)
-      if machine_readable:
+      if machine_readable and not quiet:
         print('{ "type": "progress", "value": 0.90, "log": { "level": "Trace", "message": "Progress: 90%" } }', file=sys.stderr)
   
     if args.outputAnalysis:
@@ -490,7 +492,7 @@ def main():
     lip_frames = reframe_lip_shapes(lip_timings, framerate, max(abs(args.exposureDuration), 1))
     if (args.useTransitionFrames):
       lip_frames = add_transition_frames(lip_frames, framerate)
-    if machine_readable:
+    if machine_readable and not quiet:
       print('{ "type": "progress", "value": 0.95, "log": { "level": "Trace", "message": "Progress: 95%" } }', file=sys.stderr)
   
     output_string = ""
@@ -535,7 +537,7 @@ def main():
       case _:
         raise Exception(f"Output format \"{args.exportFormat}\" not supported.")
   
-    if machine_readable:
+    if machine_readable and not quiet:
       print('{ "type": "progress", "value": 1.00, "log": { "level": "Trace", "message": "Progress: 100%" } }', file=sys.stderr)
 
     if args.output:
@@ -543,12 +545,12 @@ def main():
         f.write(output_string)
     else:
       print(output_string)
-    if machine_readable:
+    if machine_readable and not quiet:
       print('{ "type": "success", "log": { "level": "Info", "message": "Application terminating normally." } }', file=sys.stderr)
   except Exception as e:
     if machine_readable:
-      print(format_exc())
       print(f'{{ "type": "failure", "reason": "{e}", "log": {{ "level": "Fatal", "message": "Application terminating with error: {e}" }} }}', file=sys.stderr)
+      sys.exit(1)
 
 
 if __name__ == '__main__':
