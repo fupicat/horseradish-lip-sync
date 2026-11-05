@@ -426,7 +426,7 @@ def main():
   parser.add_argument("-q", "--quiet", action='store_true', help="By default, Horseradish Lip Sync writes a number of progress messages to stderr. If you're using it as part of a batch process, this may clutter your console. If you specify the --quiet flag, there won't be any output to stderr unless an error occurred.")
   parser.add_argument("--outputAnalysis", type=str, help="Name of the file to save the MFA phoneme breakdown, for debug purposes.")
   parser.add_argument("--frameRate", type=int, default=24, help="Controls the frame rate for the output file.")
-  parser.add_argument("--exposureDuration", type=int, default=1, help="Number of frames minimum for the keyframes to be exposed. 1 = Animation on ones, 2 = animation on twos, etc.")
+  parser.add_argument("--exposureDuration", type=int, default=2, help="Number of frames minimum for the keyframes to be exposed. 1 = Animation on ones, 2 = animation on twos, etc.")
   parser.add_argument("--useTransitionFrames", action='store_true', help="Adds transition frames between keyframes, labeled with '-trans' at the end. Note that transition frames ignore exposure, they are always animated on ones.")
 
   args = parser.parse_args()
